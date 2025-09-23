@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { X, Clock, User, Phone, MapPin, Wrench, AlertCircle, Trash2, Plus } from 'lucide-react';
+import { X, Clock, User, Phone, MapPin, Wrench, AlertCircle, Trash2, Plus, Printer } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -129,6 +129,156 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
   const morningAppointments = appointments.filter(apt => apt.shift === 'morning');
   const afternoonAppointments = appointments.filter(apt => apt.shift === 'afternoon');
 
+  const handlePrint = (shift: 'morning' | 'afternoon') => {
+    const appointmentsToPrint = shift === 'morning' ? morningAppointments : afternoonAppointments;
+    const shiftName = shift === 'morning' ? 'Manhã' : 'Tarde';
+    const dateStr = formatDate(selectedDate);
+    
+    const printContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Agendamentos ${shiftName} - ${dateStr}</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              margin: 20px; 
+              color: #333;
+            }
+            .header {
+              text-align: center;
+              border-bottom: 2px solid #2563eb;
+              padding-bottom: 20px;
+              margin-bottom: 30px;
+            }
+            .header h1 {
+              color: #2563eb;
+              margin: 0;
+              font-size: 28px;
+            }
+            .header h2 {
+              color: #16a34a;
+              margin: 5px 0 0 0;
+              font-size: 20px;
+            }
+            .appointment {
+              border: 1px solid #e2e8f0;
+              border-radius: 8px;
+              padding: 15px;
+              margin-bottom: 15px;
+              page-break-inside: avoid;
+            }
+            .appointment-header {
+              display: flex;
+              justify-content: space-between;
+              align-items: center;
+              border-bottom: 1px solid #f1f5f9;
+              padding-bottom: 10px;
+              margin-bottom: 10px;
+            }
+            .client-name {
+              font-size: 18px;
+              font-weight: bold;
+              color: #1e40af;
+            }
+            .appointment-time {
+              background: #dbeafe;
+              color: #1e40af;
+              padding: 4px 8px;
+              border-radius: 4px;
+              font-weight: bold;
+            }
+            .appointment-details {
+              display: grid;
+              grid-template-columns: 1fr 1fr;
+              gap: 15px;
+              margin-top: 10px;
+            }
+            .detail-item {
+              margin-bottom: 8px;
+            }
+            .detail-label {
+              font-weight: bold;
+              color: #374151;
+              display: block;
+              margin-bottom: 2px;
+            }
+            .detail-value {
+              color: #6b7280;
+            }
+            .problem-section {
+              grid-column: 1 / -1;
+              margin-top: 10px;
+              padding-top: 10px;
+              border-top: 1px solid #f1f5f9;
+            }
+            .no-appointments {
+              text-align: center;
+              color: #6b7280;
+              font-style: italic;
+              padding: 40px;
+            }
+            @media print {
+              body { margin: 0; }
+              .appointment { page-break-inside: avoid; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Thermotec - Assistência Técnica</h1>
+            <h2>Agendamentos do Turno da ${shiftName}</h2>
+            <p style="margin: 10px 0 0 0; color: #6b7280;">${dateStr}</p>
+          </div>
+          
+          ${appointmentsToPrint.length === 0 
+            ? '<div class="no-appointments">Nenhum agendamento para este turno</div>'
+            : appointmentsToPrint.map((apt, index) => `
+              <div class="appointment">
+                <div class="appointment-header">
+                  <span class="client-name">${index + 1}. ${apt.clientName}</span>
+                  <span class="appointment-time">${apt.time}</span>
+                </div>
+                <div class="appointment-details">
+                  <div class="detail-item">
+                    <span class="detail-label">Telefone:</span>
+                    <span class="detail-value">${apt.phone}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Aparelho:</span>
+                    <span class="detail-value">${apt.appliance}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">CEP:</span>
+                    <span class="detail-value">${apt.cep}</span>
+                  </div>
+                  <div class="detail-item">
+                    <span class="detail-label">Endereço:</span>
+                    <span class="detail-value">${apt.address}</span>
+                  </div>
+                  <div class="problem-section">
+                    <span class="detail-label">Problema Relatado:</span>
+                    <div class="detail-value" style="margin-top: 5px; line-height: 1.5;">${apt.problem}</div>
+                  </div>
+                </div>
+              </div>
+            `).join('')}
+        </body>
+      </html>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(printContent);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+        printWindow.close();
+      }, 250);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -140,9 +290,31 @@ const AppointmentModal: React.FC<AppointmentModalProps> = ({
             <h2 className="text-2xl font-bold text-foreground">Agendamentos</h2>
             <p className="text-muted-foreground capitalize">{formatDate(selectedDate)}</p>
           </div>
-          <Button variant="ghost" size="sm" onClick={onClose}>
-            <X className="h-5 w-5" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              onClick={() => handlePrint('morning')}
+              variant="outline"
+              size="sm"
+              className="text-primary hover:text-primary-foreground"
+              disabled={morningAppointments.length === 0}
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              Imprimir Manhã
+            </Button>
+            <Button
+              onClick={() => handlePrint('afternoon')}
+              variant="outline"
+              size="sm"
+              className="text-primary hover:text-primary-foreground"
+              disabled={afternoonAppointments.length === 0}
+            >
+              <Printer className="h-4 w-4 mr-1" />
+              Imprimir Tarde
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onClose}>
+              <X className="h-5 w-5" />
+            </Button>
+          </div>
         </div>
 
         <div className="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
